@@ -58,12 +58,9 @@
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>                                          // YwRobot Arduino LCM1602 IIC V1 library
 
-#define LDC true
-// ----- LCD
-#ifdef LCD
-  // LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);          // LCD pinouts: addr,en,rw,rs,d4,d5,d6,d7,bl,blpol
-  LiquidCrystal_I2C lcd(0x37, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);          // LCD pinouts: addr,en,rw,rs,d4,d5,d6,d7,bl,blpol
-#endif
+  LiquidCrystal_I2C lcd(0x3F, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);          // LCD pinouts: addr,en,rw,rs,d4,d5,d6,d7,bl,blpol
+  //  LiquidCrystal_I2C lcd(0x3F,16,2);
+
   int LCD_loop_counter;
   int LCD_heading_buffer, LCD_pitch_buffer, LCD_roll_buffer;
 
@@ -105,7 +102,8 @@ float   Accel_pitch,  Accel_roll;
   Obtain your magnetic declination from http://www.magnetic-declination.com/
   Uncomment the declination code within the main loop() if you want True North.
 */
-float   Declination = +22.5833;                                             //  Degrees ... replace this declination with yours
+//  float   Declination = +22.5833;                                           //  Degrees ... replace this declination with yours
+float   Declination = -0.18;                                              //  Newbury
 int     Heading;
 
 int     Mag_x,                Mag_y,                Mag_z;                  // Raw magnetometer readings
@@ -122,12 +120,18 @@ float   Mag_pitch, Mag_roll;
    (4) Set "Record_data = false;" then upload & rerun program.
 */
 bool    Record_data = false;
+/*
 int     Mag_x_offset = 46,      Mag_y_offset = 190,     Mag_z_offset = -254;   // Hard-iron offsets
 float   Mag_x_scale = 1.01,     Mag_y_scale = 0.99,     Mag_z_scale = 1.00;    // Soft-iron scale factors
 float   ASAX = 1.17,            ASAY = 1.18,            ASAZ = 1.14;           // (A)sahi (S)ensitivity (A)djustment fuse ROM values.
+*/
+int     Mag_x_offset = 46,      Mag_y_offset = 190,     Mag_z_offset = -254;   // Hard-iron offsets
+float   Mag_x_scale = 0.99,     Mag_y_scale = 0.99,     Mag_z_scale = 1.02;    // Soft-iron scale factors
+float   ASAX = 1.19,            ASAY = 1.19,            ASAZ = 1.15;           // (A)sahi (S)ensitivity (A)djustment fuse ROM values.
+
 
 // ----- LED
-const int LED = 13;                     // Status LED
+const int LED = 15;                     // Status LED
 
 // ----- Flags
 bool Gyro_synchronised = false;
@@ -138,7 +142,7 @@ bool Flag = false;
 long Loop_start_time;
 long Debug_start_time;
 
-#define Stabilize = true; 
+#define Stabilize true 
 
 // -----------------
 //  Setup
@@ -156,9 +160,10 @@ void setup()
   
   Wire.setClock(400000);
 
-#ifdef LCD
+  //  lcd.init();
+  lcd.clear();
+  lcd.backlight();
   lcd.begin(16, 2);                                     //16 char x 2 line LCD display
-#endif
 
   // ----- Provision to disable tilt stabilization
   /*
@@ -175,13 +180,11 @@ void setup()
   
   
   // ----- Start-up message
-#ifdef LCD
-  lcd.clear();                                          // Clear the LCD
   lcd.setCursor(0, 0);                                  // Set the LCD cursor to column 0 line 0
   lcd.print(" Tilt Compass");                           // Print text to screen
   lcd.setCursor(0, 1);                                  // Set the LCD cursor to column 0 line 1
   lcd.print("      V1.0");                              // Print text to screen
-#endif
+  
   Serial.printf("Tilt Compass - V1.0\n");
   delay(2000);                                          // Allow time to read
 
@@ -202,7 +205,7 @@ void setup()
     Serial.print("Calibrate Magnetometer");
     calibrate_magnetometer();
   }
-
+  
   // ----- Configure the gyro & magnetometer
   Serial.print("Config Gyro");
   config_gyro();
@@ -211,7 +214,7 @@ void setup()
   calibrate_gyro();
 
   // ----- Display "heading, pitch, roll" headings
-#ifdef LCD
+
   lcd.clear();                                          //Clear the LCD
   lcd.setCursor(2, 0);                                  //Set the LCD cursor to position to position 0,0
   lcd.print("Heading ");                                //Print text to screen
@@ -219,12 +222,10 @@ void setup()
   lcd.print("P");                                       //Print text to screen
   lcd.setCursor(9, 1);                                  //Set the LCD cursor to position to position 0,1
   lcd.print("R");                                       //Print text to screen
-#endif
-  Serial.println("Welcome");
-  /* LdB
+
   Debug_start_time = micros();                          // Controls data display rate to Serial Monitor
   Loop_start_time = micros();                           // Controls the Gyro refresh rate
-  */
+  
 }
 
 // ----------------------------
@@ -232,6 +233,7 @@ void setup()
 // ----------------------------
 void loop()
 {
+
   ////////////////////////////////////////////
   //        PITCH & ROLL CALCULATIONS       //
   ////////////////////////////////////////////
@@ -244,7 +246,6 @@ void loop()
      X-axis facing forward
   */
 
-  /* LdB
   // ----- read the raw accelerometer and gyro data
   read_mpu_6050_data();                                             // Read the raw acc and gyro data from the MPU-6050
 
@@ -263,7 +264,6 @@ void loop()
     Yaw (Clock - wise rotation)  = +ve reading
   */
 
-  /* LdB
   Gyro_pitch += -Gyro_y * Sensor_to_deg;                            // Integrate the raw Gyro_y readings
   Gyro_roll += Gyro_x * Sensor_to_deg;                              // Integrate the raw Gyro_x readings
   Gyro_yaw += -Gyro_z * Sensor_to_deg;                              // Integrate the raw Gyro_x readings
@@ -283,7 +283,6 @@ void loop()
      Adjust the following two values until the pitch and roll readings are zero
   */
 
-  /* LdB
   Accel_pitch -= -0.2f;                                             //Accelerometer calibration value for pitch
   Accel_roll -= 1.1f;                                               //Accelerometer calibration value for roll
 
@@ -335,7 +334,6 @@ void loop()
 
   // ----- Read the magnetometer
 
-  /*LdB
   read_magnetometer();
 
   // ----- Fix the pitch, roll, & signs
@@ -347,7 +345,6 @@ void loop()
      which means that the sign for Mag_pitch must be negative to compensate.
   */
 
-  /* LdB
   Mag_pitch = -Gyro_roll_output * DEG_TO_RAD;
   Mag_roll = Gyro_pitch_output * DEG_TO_RAD;
 
@@ -375,7 +372,6 @@ void loop()
      By convention, declination is positive when magnetic north
      is east of true north, and negative when it is to the west.
   */
-  /* LdB
   Heading += Declination;               // Geographic North
   if (Heading > 360.0) Heading -= 360.0;
   if (Heading < 0.0) Heading += 360.0;
@@ -487,20 +483,16 @@ void calibrate_magnetometer()
   float chord_average;
 
   // ----- Display calibration message
-#ifdef LCD
   lcd.clear();                                                    // Clear the LCD
   lcd.setCursor(0, 0);                                            // Set the LCD cursor to column 0 line 0
   lcd.print("Rotate Compass");                                    // Print text to screen
   lcd.setCursor(0, 1);                                            // Set the LCD cursor to column 0 line 1
-#endif
 
   // ----- Record min/max XYZ compass readings
   for (int counter = 0; counter < 16000 ; counter ++)             // Run this code 16000 times
   {
     Loop_start = micros();                                        // Start loop timer
-#ifdef LCD
     if (counter % 1000 == 0)lcd.print(".");                        // Print a dot on the LCD every 1000 readings
-#endif
 
     // ----- Point to status register 1
     Wire.beginTransmission(AK8963_I2C_address);                   // Open session with AK8963
@@ -655,12 +647,10 @@ void config_gyro()
 void calibrate_gyro()
 {
   // ----- Display calibration message
-#ifdef LCD
   lcd.clear();                                          //Clear the LCD
   lcd.setCursor(0, 0);                                  //Set the LCD cursor to position to position 0,0
   lcd.print("Calibrating gyro");                        //Print text to screen
   lcd.setCursor(0, 1);                                  //Set the LCD cursor to position to position 0,1
-#endif
 
   Serial.print("CG - Set LED HIGH");
 
@@ -668,18 +658,21 @@ void calibrate_gyro()
   pinMode(LED, OUTPUT);                                 //Set LED (pin 13) as output
   digitalWrite(LED, HIGH);                              //Turn LED on ... indicates startup
 
+  
   // ----- Calibrate gyro
   for (int counter = 0; counter < 2000 ; counter ++)    //Run this code 2000 times
   {
     Loop_start = micros();
-#ifdef LCD
     if (counter % 125 == 0)lcd.print(".");              //Print a dot on the LCD every 125 readings
-#endif
+
     read_mpu_6050_data();                               //Read the raw acc and gyro data from the MPU-6050
     Gyro_x_cal += Gyro_x;                               //Add the gyro x-axis offset to the gyro_x_cal variable
     Gyro_y_cal += Gyro_y;                               //Add the gyro y-axis offset to the gyro_y_cal variable
     Gyro_z_cal += Gyro_z;                               //Add the gyro z-axis offset to the gyro_z_cal variable
-    while (micros() - Loop_start < Loop_time);           // Wait until "Loop_time" microseconds have elapsed
+    while (micros() - Loop_start < Loop_time) {         // Wait until "Loop_time" microseconds have elapsed
+      yield(); // LdB
+    }
+    yield(); // LdB
   }
   Gyro_x_cal /= 2000;                                   //Divide the gyro_x_cal variable by 2000 to get the average offset
   Gyro_y_cal /= 2000;                                   //Divide the gyro_y_cal variable by 2000 to get the average offset
@@ -688,6 +681,7 @@ void calibrate_gyro()
   // ----- Status LED
   Serial.print("CG - Set LED LOW");
   digitalWrite(LED, LOW);                               // Turn LED off ... calibration complete
+     
 }
 
 void  scan_I2C()
@@ -743,6 +737,7 @@ void read_mpu_6050_data()
   Gyro_x = Wire.read() << 8 | Wire.read();              // Combine MSB,LSB Gyro_x variable
   Gyro_y = Wire.read() << 8 | Wire.read();              // Combine MSB,LSB Gyro_x variable
   Gyro_z = Wire.read() << 8 | Wire.read();              // Combine MSB,LSB Gyro_x variable
+  
 }
 
 // --------------------------
@@ -771,104 +766,73 @@ void write_LCD()
     ////////////////////// Heading /////////////////////////
     case 1: // ----- Buffer heading reading
       LCD_heading_buffer = round(Heading);                    // Buffer the (true north) heading because it will change
-#ifdef LCD
       lcd.setCursor(10, 0);                                   // Set the LCD cursor to column 10, row 0
       lcd.print("     ");                                     // Clear digits
       lcd.setCursor(10, 0);                                   // Set the LCD cursor to column 10, row 0
       lcd.print(LCD_heading_buffer);
-#else
+
       Serial.println(LCD_heading_buffer);
-#endif
       break;
 
     /////////////////////// Pitch ///////////////////////////
     case 2: // ----- Buffer the pitch angle
       LCD_pitch_buffer = Gyro_pitch_output * 10;            // Buffer the gyro pitch angle because it will change
-#ifdef LCD      
       lcd.setCursor(1, 1);                                 // Set the LCD cursor to column 10, row 1
-#endif
       break;
 
     case 3: // ----- Display pitch sign
-#ifdef LCD
       (LCD_pitch_buffer < 0) ? lcd.print("-") : lcd.print("+");
-#endif
       break;
 
     case 4: // ----- Display 1st pitch digit
-#ifdef LCD
       lcd.print(abs(LCD_pitch_buffer) / 1000);
-#else
       Serial.println(abs(LCD_pitch_buffer) / 1000);
-#endif
       break;
 
     case 5: // ----- Display 2nd pitch digit
-#ifdef LCD
       lcd.print((abs(LCD_pitch_buffer) / 100) % 10);
-#endif
       break;
 
     case 6: // ----- Display 3rd pitch digit
-#ifdef LCD
       lcd.print((abs(LCD_pitch_buffer) / 10) % 10);
-#endif
       break;
 
     case 7: // ----- Display decimal point
-#ifdef LCD
       lcd.print(".");
-#endif
       break;
 
     case 8: // ----- Display 4th pitch digit
-#ifdef LCD
       lcd.print(abs(LCD_pitch_buffer) % 10);
-#endif
       break;
 
     ///////////////////// Roll //////////////////////////
     case 9: // ----- Buffer pitch reading
       LCD_roll_buffer = Gyro_roll_output * 10;          // Buffer the gyro roll angle because it will change
-#ifdef LCD
       lcd.setCursor(10, 1);                              // Set the LCD cursor to column 1, row 0
-#endif
       break;
 
     case 10: // ----- Display roll sign
-#ifdef LCD
       (LCD_roll_buffer < 0) ? lcd.print("-") : lcd.print("+");
-#endif
       break;
 
     case 11: // ----- Display 1st roll digit
-#ifdef LCD
       lcd.print(abs(LCD_roll_buffer) / 1000);
-#endif
       break;
 
     case 12: // ----- Display 2nd roll digit
-#ifdef LCD
       lcd.print((abs(LCD_roll_buffer) / 100) % 10);
-#endif
       break;
 
     case 13: // ----- Display 3rd roll digit
-#ifdef LCD
       lcd.print((abs(LCD_roll_buffer) / 10) % 10);
-#endif
       break;
 
     case 14: // ----- Display decimal point
-#ifdef LCD
       lcd.print(".");
-#endif
       break;
 
     case 15: // ----- Display 4th roll digit
-#ifdef LCD
      lcd.print(abs(LCD_roll_buffer) % 10);
-#endif
      LCD_loop_counter = 0;
       break;
   }
