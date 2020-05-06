@@ -58,7 +58,7 @@
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>                                          // YwRobot Arduino LCM1602 IIC V1 library
 
-//  LdB #define LDC true
+#define LDC true
 // ----- LCD
 #ifdef LCD
   // LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);          // LCD pinouts: addr,en,rw,rs,d4,d5,d6,d7,bl,blpol
@@ -150,9 +150,10 @@ void setup()
   Serial.printf("\nSetup\n");
 
   Serial.println("Scan_I2C");
+  Wire.begin();                                         //Start I2C as master
+  
   scan_I2C();
   
-  Wire.begin();                                         //Start I2C as master
   Wire.setClock(400000);
 
 #ifdef LCD
@@ -661,6 +662,8 @@ void calibrate_gyro()
   lcd.setCursor(0, 1);                                  //Set the LCD cursor to position to position 0,1
 #endif
 
+  Serial.print("CG - Set LED HIGH");
+
   // ----- LED Status (ON = calibration start)
   pinMode(LED, OUTPUT);                                 //Set LED (pin 13) as output
   digitalWrite(LED, HIGH);                              //Turn LED on ... indicates startup
@@ -683,6 +686,7 @@ void calibrate_gyro()
   Gyro_z_cal /= 2000;                                   //Divide the gyro_z_cal variable by 2000 to get the average offset
 
   // ----- Status LED
+  Serial.print("CG - Set LED LOW");
   digitalWrite(LED, LOW);                               // Turn LED off ... calibration complete
 }
 
@@ -701,16 +705,15 @@ void  scan_I2C()
     // a device did acknowledge to the address.
     Wire.beginTransmission(address);
     error = Wire.endTransmission();
- 
-    if (error == 0)
-    {
-      Serial.printf("I2C device found at address 0x%02x\n",address);
-      nDevices++;
+
+    switch (error) {
+      case 0:   Serial.printf("I2C device found at address 0x%02x\n",address);
+                break;
+      case 4:   Serial.printf("Unknown error at address 0x%02x\n",address);
+                break;
+      default:  //  Serial.printf("Error 0x%02x at address 0x%02x\n",error,address);
+                break;
     }
-    else if (error==4)
-    {
-      Serial.print("Unknown error at address 0x%02x\n",address);
-    }    
   }
 }
 // --------------------
